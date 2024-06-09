@@ -33,7 +33,7 @@ function DashBoard() {
       if (lat && lng) {
         map.flyTo([lat, lng], map.getZoom(), {
           animate: true,
-          duration: 1.5 // Adjust the duration for smoother animation
+          duration: 10 // Adjust the duration for smoother animation
         });
       }
     }, [lat, lng, map]);
