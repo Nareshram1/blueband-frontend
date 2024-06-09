@@ -23,7 +23,15 @@ function RecenterMap({ lat, lng }) {
     });
   }, [lat, lng, map]);
   return null;
+  
 }
+
+
+const toFixedFloat = (num, decimalPlaces) => {
+  const factor = Math.pow(10, decimalPlaces);
+  return Math.round(num * factor) / factor;
+};
+
 
 function Home() {
   const [cars, setCars] = useState([]);
@@ -31,28 +39,54 @@ function Home() {
   const [sosMessages, setSosMessages] = useState([]);
   const [carPaths, setCarPaths] = useState({});
 
+  
+
+
+
   useEffect(() => {
     const socket = io('http://localhost:5000', {
       withCredentials: true,
     });
 
+    // socket.on('locationUpdate', (data) => {
+    //   setCars((prevCars) => {
+    //     const updatedCars = prevCars.filter(car => car.carId !== data.carId);
+    //     updatedCars.push(data);
+
+    //     // Update car paths
+    //     setCarPaths((prevPaths) => {
+    //       const newPaths = { ...prevPaths };
+    //       if (!newPaths[data.carId]) {
+    //         newPaths[data.carId] = [];
+    //       }
+    //       newPaths[data.carId].push([parseFloat(data.latitude,7), parseFloat(data.longitude,7)]);
+    //       console.log('Updated Paths:', newPaths); // Debugging line
+    //       return newPaths;
+    //     });
+
+    //     return updatedCars;
+    //   });
+    // });
+
     socket.on('locationUpdate', (data) => {
+      const { carId, latitude, longitude } = data;
+      const preciseLat = toFixedFloat(parseFloat(latitude), 7);
+      const preciseLng = toFixedFloat(parseFloat(longitude), 7);
       setCars((prevCars) => {
-        const updatedCars = prevCars.filter(car => car.carId !== data.carId);
-        updatedCars.push(data);
-
-        // Update car paths
-        setCarPaths((prevPaths) => {
-          const newPaths = { ...prevPaths };
-          if (!newPaths[data.carId]) {
-            newPaths[data.carId] = [];
-          }
-          newPaths[data.carId].push([data.latitude, data.longitude]);
-          console.log('Updated Paths:', newPaths); // Debugging line
-          return newPaths;
-        });
-
+        const updatedCars = prevCars.filter(car => car.carId !== carId);
+        updatedCars.push({ ...data, latitude: preciseLat, longitude: preciseLng });
+        
         return updatedCars;
+      });
+
+      setCarPaths((prevPaths) => {
+        const newPaths = { ...prevPaths };
+        if (!newPaths[carId]) {
+          newPaths[carId] = [];
+        }
+        newPaths[carId].push([preciseLat, preciseLng]);
+        console.log('Updated Paths:', newPaths); // Debugging line
+        return newPaths;
       });
     });
 
@@ -99,6 +133,7 @@ function Home() {
                 subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
               />
               {cars.map((car) => (
+               
                 <Marker key={car.carId} position={[car.latitude, car.longitude]} icon={CarIcon}>
                   <Popup>
                     Car ID: {car.carId}<br />
@@ -106,11 +141,13 @@ function Home() {
                     Longitude: {car.longitude}
                   </Popup>
                 </Marker>
+                
+                
               ))}
               {Object.keys(carPaths).map(carId => (
                 <Polyline key={carId} positions={carPaths[carId]} color="blue" />
               ))}
-              <Polyline key={1} positions={carPaths['Car-1']} color="red" />
+              
               {cars.length > 0 && (
                 <RecenterMap lat={cars[cars.length - 1].latitude} lng={cars[cars.length - 1].longitude} />
               )}
