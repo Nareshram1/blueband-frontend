@@ -1,0 +1,10 @@
+@keyframes blinking {
+    0% { border-color: transparent; }
+    50% { border-color: red; }
+    100% { border-color: transparent; }
+  }
+  
+  .animate-blinking {
+    animation: blinking 0.7s infinite;
+  }
+  
