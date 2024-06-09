@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.gridlayer.googlemutant';
 import io from 'socket.io-client';
 import './styles.css';
+
 // Custom car icons
 const RaceCar = L.icon({
   iconUrl: '/racingcar.png',
@@ -24,14 +25,17 @@ function DashBoard() {
   const [cars, setCars] = useState([]);
   const [mapCenter, setMapCenter] = useState([52.07134812014466, -1.015803606943344]);
   const [sosMessages, setSosMessages] = useState(new Map());
+  const [carPaths, setCarPaths] = useState({});
 
   function RecenterMap({ lat, lng }) {
     const map = useMap();
     useEffect(() => {
-      map.flyTo([lat, lng], map.getZoom(), {
-        animate: true,
-        duration: 1.5 // Adjust the duration for smoother animation
-      });
+      if (lat && lng) {
+        map.flyTo([lat, lng], map.getZoom(), {
+          animate: true,
+          duration: 1.5 // Adjust the duration for smoother animation
+        });
+      }
     }, [lat, lng, map]);
     return null;
   }
@@ -45,6 +49,18 @@ function DashBoard() {
       setCars((prevCars) => {
         const updatedCars = prevCars.filter(car => car.carId !== data.carId);
         updatedCars.push(data);
+
+        // Update car paths
+        setCarPaths((prevPaths) => {
+          const newPaths = { ...prevPaths };
+          if (!newPaths[data.carId]) {
+            newPaths[data.carId] = [];
+          }
+          newPaths[data.carId].push([data.latitude, data.longitude]);
+          console.log('Updated Paths:', newPaths); // Debugging line
+          return newPaths;
+        });
+
         return updatedCars;
       });
     });
@@ -78,8 +94,6 @@ function DashBoard() {
       window.speechSynthesis.speak(msg);
       window.speechSynthesis.speak(msg);
     }
-    
-
   };
 
   const sortedCars = cars.slice().sort((a, b) => a.carId - b.carId);
@@ -109,7 +123,7 @@ function DashBoard() {
                 subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
               />
               {cars.map((car) => (
-                <Marker key={car.carId} position={[car.latitude, car.longitude]} icon={sosMessages.has(car.carId)?SosIcon:RaceCar}>
+                <Marker key={car.carId} position={[car.latitude, car.longitude]} icon={sosMessages.has(car.carId) ? SosIcon : RaceCar}>
                   <Popup>
                     Car ID: {car.carId}<br />
                     Latitude: {car.latitude}<br />
@@ -117,7 +131,14 @@ function DashBoard() {
                   </Popup>
                 </Marker>
               ))}
-              <RecenterMap lat={cars[cars.length - 1].latitude} lng={cars[cars.length - 1].longitude} />
+              {Object.keys(carPaths).map(carId => (
+                carPaths[carId] && carPaths[carId].length > 0 && (
+                  <Polyline key={carId} positions={carPaths[carId]} color="blue" />
+                )
+              ))}
+              {cars.length > 0 && (
+                <RecenterMap lat={cars[cars.length - 1].latitude} lng={cars[cars.length - 1].longitude} />
+              )}
             </MapContainer>
           )}
           {sosMessages.size > 0 && (
@@ -147,7 +168,5 @@ const CarInfo = ({ car, sosMessages }) => {
     </div>
   );
 };
-
-
 
 export default DashBoard;
