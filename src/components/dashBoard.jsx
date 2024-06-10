@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.gridlayer.googlemutant';
@@ -35,51 +35,52 @@ function RecenterMap({ lat, lng }) {
   return null;
 }
 
-const audio = new Audio("alert.mp3");
+const audio = new Audio("alert.mp3")
 
 function DashBoard() {
-  const [cars, setCars] = useState(new Map());
+  const [cars, setCars] = useState([]);
   const [mapCenter, setMapCenter] = useState([53.324547401, 9.876795653]);
   const [sosMessages, setSosMessages] = useState(new Map());
   const [carPaths, setCarPaths] = useState({});
   const [carDirections, setCarDirections] = useState({});
-
-  const updateCarData = useCallback((data) => {
-    setCars((prevCars) => {
-      const newCars = new Map(prevCars);
-      newCars.set(data.carId, data);
-
-      setCarPaths((prevPaths) => {
-        const newPaths = { ...prevPaths };
-        if (!newPaths[data.carId]) {
-          newPaths[data.carId] = [];
-        }
-        newPaths[data.carId].push([data.latitude, data.longitude]);
-        return newPaths;
-      });
-
-      setCarDirections((prevDirections) => {
-        const newDirections = { ...prevDirections };
-        const path = carPaths[data.carId];
-        if (path && path.length > 1) {
-          const lastPoint = path[path.length - 2];
-          const newPoint = [data.latitude, data.longitude];
-          const angle = calculateAngle(lastPoint, newPoint);
-          newDirections[data.carId] = angle + 50;
-        }
-        return newDirections;
-      });
-
-      return newCars;
-    });
-  }, [carPaths]);
 
   useEffect(() => {
     const socket = io('http://localhost:5000', {
       withCredentials: true,
     });
 
-    socket.on('locationUpdate', updateCarData);
+    socket.on('locationUpdate', (data) => {
+      setCars((prevCars) => {
+        const updatedCars = prevCars.filter(car => car.carId !== data.carId);
+        updatedCars.push(data);
+
+        // Update car paths and directions
+        setCarPaths((prevPaths) => {
+          const newPaths = { ...prevPaths };
+          if (!newPaths[data.carId]) {
+            newPaths[data.carId] = [];
+          }
+          newPaths[data.carId].push([data.latitude, data.longitude]);
+          return newPaths;
+        });
+
+        setCarDirections((prevDirections) => {
+          const newDirections = { ...prevDirections };
+          const path = carPaths[data.carId];
+          if (path && path.length > 1) {
+            const lastPoint = path[path.length - 2];
+            const newPoint = [data.latitude, data.longitude];
+            const angle = calculateAngle(lastPoint, newPoint);
+           
+            newDirections[data.carId] = angle+50;
+            
+          }
+          return newDirections;
+        });
+
+        return updatedCars;
+      });
+    });
 
     socket.on('sos', (data) => {
       setSosMessages((prevMessages) => {
@@ -87,38 +88,41 @@ function DashBoard() {
         newMessages.set(data.carId, data.message);
         audio.play();
         readMessage(data.carId, data.message);
+        console.log("SOS")
         return newMessages;
       });
     });
 
     return () => socket.disconnect();
-  }, [updateCarData]);
+  }, [carPaths]);
 
   useEffect(() => {
-    if (cars.size > 0) {
-      const lastCarPosition = Array.from(cars.values()).slice(-1)[0];
-      setMapCenter([lastCarPosition.latitude, lastCarPosition.longitude]);
+    if (cars.length > 0) {
+      const lastCarPosition = [cars[cars.length - 1].latitude, cars[cars.length - 1].longitude];
+      setMapCenter(lastCarPosition);
     }
   }, [cars]);
 
-  const calculateAngle = useCallback((start, end) => {
+  const calculateAngle = (start, end) => {
     const dx = end[1] - start[1];
     const dy = end[0] - start[0];
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     return angle;
-  }, []);
+  };
 
+  // Function to read out the message using Web Speech API
   const readMessage = (carId, message) => {
     const msg = new SpeechSynthesisUtterance(`${carId}: ${message}`);
     if (typeof window !== "undefined") {
-      for (let i = 0; i < 3; i++) {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance("SOS Alert"));
-        window.speechSynthesis.speak(msg);
-      }
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance("SOS Alert"));
+      window.speechSynthesis.speak(msg);
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance("SOS Alert"));
+      window.speechSynthesis.speak(msg);
+
     }
   };
 
-  const sortedCars = useMemo(() => Array.from(cars.values()).sort((a, b) => a.carId - b.carId), [cars]);
+  const sortedCars = cars.slice().sort((a, b) => a.carId - b.carId);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -138,7 +142,10 @@ function DashBoard() {
         </div>
         <main className="flex flex-col  flex-grow min-h-[100%]">
         {sosMessages.size > 0 && (
-            <div onClick={()=>{setSosMessages(new Map())}} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
+            <div onClick={()=>{setSosMessages(new Map());window.speechSynthesis.cancel();
+              audio.pause();
+              audio.currentTime = 0;
+            }} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
               <strong className="font-bold">SOS Alerts:</strong>
               <ul className="pl-5 mt-2 list-disc">
                 {Array.from(sosMessages.entries()).map(([carId, message], index) => (
@@ -147,14 +154,14 @@ function DashBoard() {
               </ul>
             </div>
           )}
-          {cars.size > 0 ? (
+          {cars && cars.length > 0 ? (
             <MapContainer className="flex flex-grow " center={mapCenter} zoom={35} style={{ width: "100%"}}>
               <TileLayer
                 url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
                 attribution='&copy; <a href="https://maps.google.com">Google Maps</a>'
                 subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
               />
-              {sortedCars.map((car) => (
+              {cars.map((car) => (
                 <Marker
                   key={car.carId}
                   position={[car.latitude, car.longitude]}
@@ -169,8 +176,13 @@ function DashBoard() {
                   </Popup>
                 </Marker>
               ))}
-              {cars.size > 0 && (
-                <RecenterMap lat={Array.from(cars.values()).slice(-1)[0].latitude} lng={Array.from(cars.values()).slice(-1)[0].longitude} />
+              {/* {Object.keys(carPaths).map(carId => (
+                carPaths[carId] && carPaths[carId].length > 0 && (
+                  <Polyline key={carId} positions={carPaths[carId]} color="blue" />
+                )
+              ))} */}
+              {cars.length > 0 && (
+                <RecenterMap lat={cars[cars.length - 1].latitude} lng={cars[cars.length - 1].longitude} />
               )}
             </MapContainer>
           ) : (
@@ -178,6 +190,8 @@ function DashBoard() {
               <h1>Tracking Not Enabled</h1>
             </div>
           )}
+          
+          
         </main>
       </div>
     </div>
