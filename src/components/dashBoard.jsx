@@ -44,42 +44,41 @@ function DashBoard() {
   const [carPaths, setCarPaths] = useState({});
   const [carDirections, setCarDirections] = useState({});
 
-  useEffect(() => {
-    const socket = io('https://blueband-backend.onrender.com/', {
-      withCredentials: true,
-    });
-
-    socket.on('locationUpdate', (data) => {
-      setCars((prevCars) => {
-        const updatedCars = prevCars.filter(car => car.carId !== data.carId);
-        updatedCars.push(data);
-
-        // Update car paths and directions
+  const updateCarData = useCallback((data) => {
+    setCars((prevCars) => {
+      const newCars = new Map(prevCars);
+      data.forEach(car => {
+        newCars.set(car.carId, car);
+        
         setCarPaths((prevPaths) => {
           const newPaths = { ...prevPaths };
-          if (!newPaths[data.carId]) {
-            newPaths[data.carId] = [];
+          if (!newPaths[car.carId]) {
+            newPaths[car.carId] = [];
           }
-          newPaths[data.carId].push([data.latitude, data.longitude]);
+          newPaths[car.carId].push([car.latitude, car.longitude]);
           return newPaths;
         });
 
         setCarDirections((prevDirections) => {
           const newDirections = { ...prevDirections };
-          const path = carPaths[data.carId];
+          const path = carPaths[car.carId];
           if (path && path.length > 1) {
             const lastPoint = path[path.length - 2];
-            const newPoint = [data.latitude, data.longitude];
+            const newPoint = [car.latitude, car.longitude];
             const angle = calculateAngle(lastPoint, newPoint);
-           
-            newDirections[data.carId] = angle+50;
-            
+            newDirections[car.carId] = angle + 50;
           }
           return newDirections;
         });
-
-        return updatedCars;
       });
+
+      return newCars;
+    });
+  }, [carPaths]);
+
+  useEffect(() => {
+    const socket = io('https://blueband-backend.onrender.com', {
+      withCredentials: true,
     });
 
     socket.on('sos', (data) => {
@@ -142,10 +141,7 @@ function DashBoard() {
         </div>
         <main className="flex flex-col  flex-grow min-h-[100%]">
         {sosMessages.size > 0 && (
-            <div onClick={()=>{setSosMessages(new Map());window.speechSynthesis.cancel();
-              audio.pause();
-              audio.currentTime = 0;
-            }} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
+            <div onClick={()=>{setSosMessages(new Map());window.speechSynthesis.cancel()}} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
               <strong className="font-bold">SOS Alerts:</strong>
               <ul className="pl-5 mt-2 list-disc">
                 {Array.from(sosMessages.entries()).map(([carId, message], index) => (
@@ -199,10 +195,12 @@ function DashBoard() {
 }
 
 const CarInfo = ({ car, sosMessages }) => {
-  const hasSos = sosMessages.has(car.carId);
-
+  const hasSos = sosMessages.has(parseInt(car.carId));
+  console.log(car.carId,'--',hasSos);
+  console.log(typeof(car.carId))
+  console.log(sosMessages);
   return (
-    <div className={`relative  flex flex-col mt-2 p-2 rounded-lg ${hasSos ? 'border-4  border-red-600 animate-blinking' : 'border border-green-300'}`}>
+    <div className={`relative  flex flex-col mt-2 p-2 rounded-lg ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300'}`}>
       <span className='font-bold'>Car: {car.carId}</span>
       <span>Latitude: {car.latitude}</span>
       <span>Longitude: {car.longitude}</span>
