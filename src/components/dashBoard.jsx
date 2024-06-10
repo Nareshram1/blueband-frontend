@@ -160,7 +160,7 @@ function DashBoard() {
                 <Marker
                   key={car.carId}
                   position={[car.latitude, car.longitude]}
-                  icon={sosMessages.has(car.carId) ? SosIcon : RaceCar}
+                  icon={sosMessages.has(parseInt(car.carId)) ? SosIcon : RaceCar}
                   rotationAngle={carDirections[car.carId] || 0}
                   rotationOrigin="center"
                 >
