@@ -7,7 +7,7 @@ import 'leaflet.gridlayer.googlemutant';
 import 'leaflet-rotatedmarker'; // Import the plugin
 import io from 'socket.io-client';
 import './styles.css';
-
+import Image from 'next/image';
 // Custom car icons
 const RaceCar = L.icon({
   iconUrl: '/racingcar.png',
@@ -75,7 +75,7 @@ function DashBoard() {
       return newCars;
     });
   }, [carPaths]);
-
+ // https://blueband-backend.onrender.com
   useEffect(() => {
     const socket = io('https://blueband-backend.onrender.com', {
       withCredentials: true,
@@ -124,9 +124,15 @@ function DashBoard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="px-6 py-4 text-white bg-blue-500">
-        <div className="container">
-          <h1 className="text-2xl font-bold">Blue Band</h1>
+      <header className="px-6 py-4 text-white bg-slate-900">
+        <div className="container flex flex-row">
+            <Image
+          src="/blueband_logo.png"
+          width={50}
+          height={50}
+          alt="Picture of the author"
+        />
+          <h1 className="text-2xl font-bold self-center ml-3">BlueBand Sports</h1>
         </div>
       </header>
       <div className='flex flex-col flex-grow h-max md:flex-row'>
