@@ -4,11 +4,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.gridlayer.googlemutant';
-import 'leaflet-rotatedmarker'; // Import the plugin
+import 'leaflet-rotatedmarker';
 import io from 'socket.io-client';
 import './styles.css';
 import Image from 'next/image';
-// Custom car icons
+
 const RaceCar = L.icon({
   iconUrl: '/racingcar.png',
   iconSize: [38, 38],
@@ -22,16 +22,22 @@ const SosIcon = L.icon({
   popupAnchor: [0, -19]
 });
 
-function RecenterMap({ lat, lng }) {
+function RecenterMap({ center, bounds }) {
   const map = useMap();
   useEffect(() => {
-    if (lat && lng) {
-      map.flyTo([lat, lng], map.getZoom(), {
+    if (bounds && bounds.length > 0) {
+      console.log('sos')
+      map.fitBounds(bounds, {
+        animate: true,
+        duration: 5 // Adjust the duration for smoother animation
+      });
+    } else if (center && center.length === 2) {
+      map.setView(center, 35, {
         animate: true,
         duration: 5 // Adjust the duration for smoother animation
       });
     }
-  }, [lat, lng, map]);
+  }, [center, bounds, map]);
   return null;
 }
 
@@ -39,43 +45,21 @@ const audio = new Audio("alert.mp3");
 
 function DashBoard() {
   const [cars, setCars] = useState(new Map());
-  const [mapCenter, setMapCenter] = useState([53.324547401, 9.876795653]);
+  const [mapCenter, setMapCenter] = useState(null);
+  const [mapBounds, setMapBounds] = useState([]);
   const [sosMessages, setSosMessages] = useState(new Map());
-  const [carPaths, setCarPaths] = useState({});
-  const [carDirections, setCarDirections] = useState({});
+  const [manualFocus, setManualFocus] = useState(false);
 
   const updateCarData = useCallback((data) => {
     setCars((prevCars) => {
       const newCars = new Map(prevCars);
       data.forEach(car => {
         newCars.set(car.carId, car);
-        
-        setCarPaths((prevPaths) => {
-          const newPaths = { ...prevPaths };
-          if (!newPaths[car.carId]) {
-            newPaths[car.carId] = [];
-          }
-          newPaths[car.carId].push([car.latitude, car.longitude]);
-          return newPaths;
-        });
-
-        setCarDirections((prevDirections) => {
-          const newDirections = { ...prevDirections };
-          const path = carPaths[car.carId];
-          if (path && path.length > 1) {
-            const lastPoint = path[path.length - 2];
-            const newPoint = [car.latitude, car.longitude];
-            const angle = calculateAngle(lastPoint, newPoint);
-            newDirections[car.carId] = angle + 50;
-          }
-          return newDirections;
-        });
       });
-
       return newCars;
     });
-  }, [carPaths]);
- // https://blueband-backend.onrender.com
+  }, []);
+
   useEffect(() => {
     const socket = io('https://blueband-backend.onrender.com', {
       withCredentials: true,
@@ -97,18 +81,18 @@ function DashBoard() {
   }, [updateCarData]);
 
   useEffect(() => {
-    if (cars.size > 0) {
-      const lastCarPosition = Array.from(cars.values()).slice(-1)[0];
-      setMapCenter([lastCarPosition.latitude, lastCarPosition.longitude]);
+    if (!manualFocus && cars.size > 0) {
+      const carArray = Array.from(cars.values());
+      if (carArray.length === 1) {
+        setMapCenter([carArray[0].latitude, carArray[0].longitude]);
+        setMapBounds([]);
+      } else {
+        const bounds = carArray.map(car => [car.latitude, car.longitude]);
+        setMapBounds(bounds);
+        setMapCenter(null);
+      }
     }
-  }, [cars]);
-
-  const calculateAngle = useCallback((start, end) => {
-    const dx = end[1] - start[1];
-    const dy = end[0] - start[0];
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    return angle;
-  }, []);
+  }, [cars, manualFocus]);
 
   const readMessage = (carId, message) => {
     const msg = new SpeechSynthesisUtterance(`${carId}: ${message}`);
@@ -122,16 +106,39 @@ function DashBoard() {
 
   const sortedCars = useMemo(() => Array.from(cars.values()).sort((a, b) => a.carId - b.carId), [cars]);
 
+  const handleCarInfoClick = useCallback((lat, lng) => {
+    setMapBounds([]);
+    setMapCenter([lat, lng]);
+    setManualFocus(true);
+  }, []);
+
+  const handleSosAlertClick = useCallback(() => {
+    setSosMessages(new Map());
+    window.speechSynthesis.cancel();
+    setManualFocus(false); // Reset manual focus on SOS alert click
+    if (cars.size > 0) {
+      const carArray = Array.from(cars.values());
+      if (carArray.length === 1) {
+        setMapCenter([carArray[0].latitude, carArray[0].longitude]);
+        setMapBounds([]);
+      } else {
+        const bounds = carArray.map(car => [car.latitude, car.longitude]);
+        setMapBounds(bounds);
+        setMapCenter(null);
+      }
+    }
+  }, [cars]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="px-6 py-4 text-white bg-slate-900">
         <div className="container flex flex-row">
-            <Image
-          src="/blueband_logo.png"
-          width={50}
-          height={50}
-          alt="Picture of the author"
-        />
+          <Image
+            src="/blueband_logo.png"
+            width={50}
+            height={50}
+            alt="BlueBand Sports Logo"
+          />
           <h1 className="text-2xl font-bold self-center ml-3">BlueBand Sports</h1>
         </div>
       </header>
@@ -140,13 +147,13 @@ function DashBoard() {
           <div className='flex-row flex-grow hidden p-4 md:flex md:flex-col'>
             <h1 className='text-xl font-bold'>Cars</h1>
             {sortedCars.map((car) => (
-              <CarInfo key={car.carId} car={car} sosMessages={sosMessages} />
+              <CarInfo key={car.carId} car={car} sosMessages={sosMessages} onClick={handleCarInfoClick} />
             ))}
           </div>
         </div>
-        <main className="flex flex-col  flex-grow min-h-[100%]">
-        {sosMessages.size > 0 && (
-            <div onClick={()=>{setSosMessages(new Map());window.speechSynthesis.cancel()}} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
+        <main className="flex flex-col flex-grow min-h-[100%]">
+          {sosMessages.size > 0 && (
+            <div onClick={handleSosAlertClick} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
               <strong className="font-bold">SOS Alerts:</strong>
               <ul className="pl-5 mt-2 list-disc">
                 {Array.from(sosMessages.entries()).map(([carId, message], index) => (
@@ -156,7 +163,7 @@ function DashBoard() {
             </div>
           )}
           {cars.size > 0 ? (
-            <MapContainer className="flex flex-grow " center={mapCenter} zoom={35} style={{ width: "100%"}}>
+            <MapContainer className="flex flex-grow" center={mapCenter || undefined} bounds={mapBounds.length > 1 ? mapBounds : undefined} zoom={35} style={{ width: "100%" }}>
               <TileLayer
                 url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
                 attribution='&copy; <a href="https://maps.google.com">Google Maps</a>'
@@ -167,7 +174,6 @@ function DashBoard() {
                   key={car.carId}
                   position={[car.latitude, car.longitude]}
                   icon={sosMessages.has(parseInt(car.carId)) ? SosIcon : RaceCar}
-                  rotationAngle={carDirections[car.carId] || 0}
                   rotationOrigin="center"
                 >
                   <Popup>
@@ -177,8 +183,10 @@ function DashBoard() {
                   </Popup>
                 </Marker>
               ))}
-              {cars.size > 0 && (
-                <RecenterMap lat={Array.from(cars.values()).slice(-1)[0].latitude} lng={Array.from(cars.values()).slice(-1)[0].longitude} />
+              {mapBounds.length > 1 ? (
+                <RecenterMap bounds={mapBounds} />
+              ) : (
+                mapCenter && <RecenterMap center={mapCenter} />
               )}
             </MapContainer>
           ) : (
@@ -192,13 +200,13 @@ function DashBoard() {
   );
 }
 
-const CarInfo = ({ car, sosMessages }) => {
+const CarInfo = ({ car, sosMessages, onClick }) => {
   const hasSos = sosMessages.has(parseInt(car.carId));
-  console.log(car.carId,'--',hasSos);
-  console.log(typeof(car.carId))
-  console.log(sosMessages);
   return (
-    <div className={`relative  flex flex-col mt-2 p-2 rounded-lg ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300'}`}>
+    <div
+      className={`relative flex flex-col mt-2 p-2 rounded-lg cursor-pointer ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300'}`}
+      onClick={() => hasSos && onClick(car.latitude, car.longitude)}
+    >
       <span className='font-bold'>Car: {car.carId}</span>
       <span>Latitude: {car.latitude}</span>
       <span>Longitude: {car.longitude}</span>
