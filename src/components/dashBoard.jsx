@@ -3,18 +3,30 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet.gridlayer.googlemutant';
 import 'leaflet-rotatedmarker';
 import io from 'socket.io-client';
 import './styles.css';
 import Image from 'next/image';
-
+import supabase from '../../utils/supabase/client'
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 const RaceCar = L.icon({
   iconUrl: '/racingcar.png',
   iconSize: [38, 38],
   iconAnchor: [19, 19],
   popupAnchor: [0, -19]
 });
+
 const SosIcon = L.icon({
   iconUrl: '/sos.png',
   iconSize: [38, 38],
@@ -22,22 +34,16 @@ const SosIcon = L.icon({
   popupAnchor: [0, -19]
 });
 
-function RecenterMap({ center, bounds }) {
+function RecenterMap({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (bounds && bounds.length > 0) {
-      console.log('sos')
-      map.fitBounds(bounds, {
-        animate: true,
-        duration: 5 // Adjust the duration for smoother animation
-      });
-    } else if (center && center.length === 2) {
-      map.setView(center, 35, {
+    if (center && center.length === 2) {
+      map.setView(center, 18, {  // Adjust the zoom level for high zoom
         animate: true,
         duration: 5 // Adjust the duration for smoother animation
       });
     }
-  }, [center, bounds, map]);
+  }, [center, map]);
   return null;
 }
 
@@ -45,11 +51,15 @@ const audio = new Audio("alert.mp3");
 
 function DashBoard() {
   const [cars, setCars] = useState(new Map());
-  const [mapCenter, setMapCenter] = useState(null);
-  const [mapBounds, setMapBounds] = useState([]);
+  const [mapCenter, setMapCenter] = useState([11.10223, 76.9659]); // Default center based on selected option (SREC)
   const [sosMessages, setSosMessages] = useState(new Map());
-  const [manualFocus, setManualFocus] = useState(false);
-
+  const [trackData,setTrackData] = useState([])
+  const [newTrackData, setNewTrackData] = useState({
+    name: "",
+    latitude: "",
+    longitude: "",
+    zoom: ""
+  });
   const updateCarData = useCallback((data) => {
     setCars((prevCars) => {
       const newCars = new Map(prevCars);
@@ -61,6 +71,23 @@ function DashBoard() {
   }, []);
 
   useEffect(() => {
+    const getTrackData=async()=>{
+      const { data, error } = await supabase
+      .from('tracks')
+      .select('*')
+
+      if(error)
+      {
+        console.error(error);
+        return
+      }
+      if(data.length>0)
+      {
+        setTrackData(data);
+      }
+
+    }
+    getTrackData();
     const socket = io('https://blueband-backend.onrender.com', {
       withCredentials: true,
     });
@@ -80,20 +107,6 @@ function DashBoard() {
     return () => socket.disconnect();
   }, [updateCarData]);
 
-  useEffect(() => {
-    if (!manualFocus && cars.size > 0) {
-      const carArray = Array.from(cars.values());
-      if (carArray.length === 1) {
-        setMapCenter([carArray[0].latitude, carArray[0].longitude]);
-        setMapBounds([]);
-      } else {
-        const bounds = carArray.map(car => [car.latitude, car.longitude]);
-        setMapBounds(bounds);
-        setMapCenter(null);
-      }
-    }
-  }, [cars, manualFocus]);
-
   const readMessage = (carId, message) => {
     const msg = new SpeechSynthesisUtterance(`${carId}: ${message}`);
     if (typeof window !== "undefined") {
@@ -107,45 +120,117 @@ function DashBoard() {
   const sortedCars = useMemo(() => Array.from(cars.values()).sort((a, b) => a.carId - b.carId), [cars]);
 
   const handleCarInfoClick = useCallback((lat, lng) => {
-    setMapBounds([]);
     setMapCenter([lat, lng]);
-    setManualFocus(true);
   }, []);
 
   const handleSosAlertClick = useCallback(() => {
     setSosMessages(new Map());
     window.speechSynthesis.cancel();
-    setManualFocus(false); // Reset manual focus on SOS alert click
-    if (cars.size > 0) {
-      const carArray = Array.from(cars.values());
-      if (carArray.length === 1) {
-        setMapCenter([carArray[0].latitude, carArray[0].longitude]);
-        setMapBounds([]);
-      } else {
-        const bounds = carArray.map(car => [car.latitude, car.longitude]);
-        setMapBounds(bounds);
-        setMapCenter(null);
-      }
-    }
-  }, [cars]);
+    setMapCenter([11.10223, 76.9659]); // Reset to default center (SREC)
+  }, []);
 
+  const handleAddNewTrack = async () => {
+    // Validate all fields are filled
+    console.log('gonna i: ',newTrackData)
+    if (!newTrackData.name || !newTrackData.latitude || !newTrackData.longitude || !newTrackData.zoom) {
+      alert('Please fill out all fields.');
+      return;
+    }
+  
+    try {
+      const { data, error } = await supabase
+        .from('tracks')
+        .insert([
+          {
+            name: newTrackData.name,
+            latitude: parseFloat(newTrackData.latitude),
+            longitude: parseFloat(newTrackData.longitude),
+            zoom: parseInt(newTrackData.zoom)
+          }
+        ])
+        .select()
+  
+      console.log(data)
+      if (error) {
+        console.error(error);
+        return;
+      }
+  
+      if (data && data.length > 0) {
+        console.log('New track added:', data);
+        // Optionally, update local state with new track data
+        setTrackData([...trackData, data[0]]);
+        // setShowDialog(false);
+        setNewTrackData({
+          name: "",
+          latitude: "",
+          longitude: "",
+          zoom: ""
+        });
+      }
+    } catch (error) {
+      console.error('Error adding new track:', error.message);
+    }
+  };
+  
+  const handleRaceTrackChange = (event) => {
+    if(event.target.value==="d") return;
+    if(event.target.value==="addTrack")
+      {
+        setShowDialog(true);
+        console.log('t')
+        return;
+      }
+
+    const selectedTrackId = event.target.value;
+    const selectedTrack = trackData.find(track => track.id === parseInt(selectedTrackId));
+    console.log(selectedTrack)
+    if (selectedTrack) {
+      setMapCenter([selectedTrack.latitude, selectedTrack.longitude]);
+    } else {
+      // Default to SREC if no valid track is selected
+      setMapCenter([11.10223, 76.9659]);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewTrackData(prevData => ({
+      ...prevData,
+      [name]: value
+    }));
+  };
+  
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="px-6 py-4 text-white bg-slate-900">
-        <div className="container flex flex-row">
+          <Dialog>
+      <header className=" text-white bg-slate-900 p-0">
+        <div className="p-4 flex flex-row items-center w-full">
           <Image
             src="/blueband_logo.png"
             width={50}
             height={50}
             alt="BlueBand Sports Logo"
-          />
-          <h1 className="text-2xl font-bold self-center ml-3">BlueBand Sports</h1>
-        </div>
+            />
+          <h1 className="text-2xl font-bold ml-3">BlueBand Sports</h1>
+          {/* <div className='bg-red-500'> */}
+
+          <select className="bg-slate-900 ml-auto w-auto h-10 text-lg font-bold p-2 rounded-lg hover:cursor-pointer" onChange={handleRaceTrackChange}>
+          <option value="d" className='bg-slate-400'>Select a track</option>
+            {trackData.map((track) => (
+              <option key={track.id} value={track.id}>{track.name}</option>
+            ))}
+          </select>
+          <DialogTrigger asChild className='w-4 ml-8'>
+              <Button variant="outline" className='bg-slate-600'>+</Button>
+            </DialogTrigger>
+            </div>
+        {/* </div> */}
       </header>
       <div className='flex flex-col flex-grow h-max md:flex-row'>
         <div className='flex md:w-[20%] w-[100%] bg-gray-900 shadow-md rounded-r-md'>
           <div className='flex-row flex-grow hidden p-4 md:flex md:flex-col'>
-            <h1 className='text-xl font-bold'>Cars</h1>
+            <h1 className='text-xl font-bold text-white'>Cars</h1>
             {sortedCars.map((car) => (
               <CarInfo key={car.carId} car={car} sosMessages={sosMessages} onClick={handleCarInfoClick} />
             ))}
@@ -153,7 +238,7 @@ function DashBoard() {
         </div>
         <main className="flex flex-col flex-grow min-h-[100%]">
           {sosMessages.size > 0 && (
-            <div onClick={handleSosAlertClick} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
+            <div onDoubleClick={handleSosAlertClick} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
               <strong className="font-bold">SOS Alerts:</strong>
               <ul className="pl-5 mt-2 list-disc">
                 {Array.from(sosMessages.entries()).map(([carId, message], index) => (
@@ -163,11 +248,11 @@ function DashBoard() {
             </div>
           )}
           {cars.size > 0 ? (
-            <MapContainer className="flex flex-grow" center={mapCenter || undefined} bounds={mapBounds.length > 1 ? mapBounds : undefined} zoom={35} style={{ width: "100%" }}>
+            <MapContainer className="flex flex-grow z-10" center={mapCenter} zoom={18} style={{ width: "100%" }}>
               <TileLayer
-                url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-                attribution='&copy; <a href="https://maps.google.com">Google Maps</a>'
-                subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                maxZoom={23} // Increase the max zoom level
               />
               {sortedCars.map((car) => (
                 <Marker
@@ -183,11 +268,7 @@ function DashBoard() {
                   </Popup>
                 </Marker>
               ))}
-              {mapBounds.length > 1 ? (
-                <RecenterMap bounds={mapBounds} />
-              ) : (
-                mapCenter && <RecenterMap center={mapCenter} />
-              )}
+              <RecenterMap center={mapCenter} />
             </MapContainer>
           ) : (
             <div className='flex items-center justify-center flex-grow'>
@@ -196,6 +277,45 @@ function DashBoard() {
           )}
         </main>
       </div>
+
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Track</DialogTitle>
+                <DialogDescription>
+                  Enter all details of track.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input id="name" name="name" value={newTrackData.name} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold"/>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="latitude" className="text-right">
+                Latitude
+              </Label>
+              <Input id="latitude" name="latitude" value={newTrackData.latitude} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="longitude" className="text-right">
+                Longitude
+              </Label>
+              <Input id="longitude" name="longitude" value={newTrackData.longitude} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="zoom" className="text-right">
+                Zoom
+              </Label>
+              <Input id="zoom" name="zoom" value={newTrackData.zoom} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold" />
+            </div>
+          </div>
+              <DialogFooter>
+                <Button type="submit" onClick={()=>{handleAddNewTrack()}}>Save changes</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
     </div>
   );
 }
@@ -205,11 +325,11 @@ const CarInfo = ({ car, sosMessages, onClick }) => {
   return (
     <div
       className={`relative flex flex-col mt-2 p-2 rounded-lg cursor-pointer ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300'}`}
-      onClick={() => hasSos && onClick(car.latitude, car.longitude)}
+      onClick={() => onClick(car.latitude, car.longitude)}
     >
-      <span className='font-bold'>Car: {car.carId}</span>
-      <span>Latitude: {car.latitude}</span>
-      <span>Longitude: {car.longitude}</span>
+      <span className='font-bold text-white'>Car: {car.carId}</span>
+      <span className='text-white'>Latitude: {car.latitude}</span>
+      <span className='text-white'>Longitude: {car.longitude}</span>
     </div>
   );
 };
