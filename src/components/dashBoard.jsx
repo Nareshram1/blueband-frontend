@@ -70,6 +70,27 @@ function DashBoard() {
     });
   }, []);
 
+  const updateCarStatus = useCallback((data) => {
+    console.log(data);
+    debugger
+    setSosMessages((prevMessages) => {
+      prevMessages.delete(data.carId);
+      return new Map(prevMessages);
+    })
+    if(sosMessages.size===0) {
+      if (typeof window !== "undefined") {
+        window.speechSynthesis.cancel();
+        if(window.speechSynthesis.speaking){
+          window.speechSynthesis.cancel();
+        }
+      audio.volume = 0;
+      audio.currentTime = 0;
+      audio.pause();
+      }
+      
+    };
+  },[])
+
   useEffect(() => {
     const getTrackData=async()=>{
       const { data, error } = await supabase
@@ -92,7 +113,9 @@ function DashBoard() {
       withCredentials: true,
     });
 
+
     socket.on('locationUpdate', updateCarData);
+    socket.on('ok', updateCarStatus);
 
     socket.on('sos', (data) => {
       setSosMessages((prevMessages) => {
@@ -105,15 +128,15 @@ function DashBoard() {
     });
 
     return () => socket.disconnect();
-  }, [updateCarData]);
+  }, [updateCarData,updateCarStatus]);
 
   const readMessage = (carId, message) => {
     const msg = new SpeechSynthesisUtterance(`${carId}: ${message}`);
     if (typeof window !== "undefined") {
-      for (let i = 0; i < 3; i++) {
+    
         window.speechSynthesis.speak(new SpeechSynthesisUtterance("SOS Alert"));
         window.speechSynthesis.speak(msg);
-      }
+      
     }
   };
 
@@ -204,18 +227,18 @@ function DashBoard() {
   return (
     <div className="flex flex-col min-h-screen">
           <Dialog>
-      <header className=" text-white bg-slate-900 p-0">
-        <div className="p-4 flex flex-row items-center w-full">
+      <header className="p-0 text-white bg-slate-900">
+        <div className="flex flex-row items-center w-full p-4">
           <Image
             src="/blueband_logo.png"
             width={50}
             height={50}
             alt="BlueBand Sports Logo"
             />
-          <h1 className="text-2xl font-bold ml-3">BlueBand Sports</h1>
+          <h1 className="ml-3 text-2xl font-bold">BlueBand Sports</h1>
           {/* <div className='bg-red-500'> */}
 
-          <select className="bg-slate-900 ml-auto w-auto h-10 text-lg font-bold p-2 rounded-lg hover:cursor-pointer" onChange={handleRaceTrackChange}>
+          <select className="w-auto h-10 p-2 ml-auto text-lg font-bold rounded-lg bg-slate-900 hover:cursor-pointer" onChange={handleRaceTrackChange}>
           <option value="d" className='bg-slate-400'>Select a track</option>
             {trackData.map((track) => (
               <option key={track.id} value={track.id}>{track.name}</option>
@@ -248,7 +271,7 @@ function DashBoard() {
             </div>
           )}
           {cars.size > 0 ? (
-            <MapContainer className="flex flex-grow z-10" center={mapCenter} zoom={18} style={{ width: "100%" }}>
+            <MapContainer className="z-10 flex flex-grow" center={mapCenter} zoom={18} style={{ width: "100%" }}>
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -286,29 +309,29 @@ function DashBoard() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid items-center grid-cols-4 gap-4">
               <Label htmlFor="name" className="text-right">
                 Name
               </Label>
-              <Input id="name" name="name" value={newTrackData.name} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold"/>
+              <Input id="name" name="name" value={newTrackData.name} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500"/>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid items-center grid-cols-4 gap-4">
               <Label htmlFor="latitude" className="text-right">
                 Latitude
               </Label>
-              <Input id="latitude" name="latitude" value={newTrackData.latitude} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold" />
+              <Input id="latitude" name="latitude" value={newTrackData.latitude} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid items-center grid-cols-4 gap-4">
               <Label htmlFor="longitude" className="text-right">
                 Longitude
               </Label>
-              <Input id="longitude" name="longitude" value={newTrackData.longitude} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold" />
+              <Input id="longitude" name="longitude" value={newTrackData.longitude} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid items-center grid-cols-4 gap-4">
               <Label htmlFor="zoom" className="text-right">
                 Zoom
               </Label>
-              <Input id="zoom" name="zoom" value={newTrackData.zoom} onChange={handleInputChange} className="col-span-3 text-slate-500 font-bold" />
+              <Input id="zoom" name="zoom" value={newTrackData.zoom} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
             </div>
           </div>
               <DialogFooter>
@@ -324,7 +347,7 @@ const CarInfo = ({ car, sosMessages, onClick }) => {
   const hasSos = sosMessages.has(parseInt(car.carId));
   return (
     <div
-      className={`relative flex flex-col mt-2 p-2 rounded-lg cursor-pointer ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300'}`}
+      className={`relative flex flex-col mt-2 p-2 rounded-lg cursor-pointer ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300 bg-green-500'}`}
       onClick={() => onClick(car.latitude, car.longitude)}
     >
       <span className='font-bold text-white'>Car: {car.carId}</span>
