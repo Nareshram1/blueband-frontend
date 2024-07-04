@@ -63,6 +63,7 @@ function DashBoard() {
   });
 
   const updateCarData = useCallback((data) => {
+    console.log('hit ',data);
     setCars((prevCars) => {
       const newCars = new Map(prevCars);
       data.forEach(car => {
@@ -89,8 +90,8 @@ function DashBoard() {
       // Convert the filtered array back to a Map
       const newMessages = new Map(filteredEntries);
   
-      console.log('Before filtering:', prevMessages);
-      console.log('After filtering:', newMessages);
+      // console.log('Before filtering:', prevMessages);
+      // console.log('After filtering:', newMessages);
   
       // Check if the newMessages Map is empty, if so, stop the audio
       if (newMessages.size === 0) {
@@ -127,8 +128,8 @@ function DashBoard() {
     };
     getTrackData();
 
-    const socket = io('https://blueband-backend.onrender.com', {
-      withCredentials: true,
+    const socket = io('https://blueband-backend.vercel.app', {
+      withCredentials: false,
     });
 
     socket.on('locationUpdate', updateCarData);
@@ -183,7 +184,7 @@ function DashBoard() {
 
   const handleAddNewTrack = async () => {
     // Validate all fields are filled
-    console.log('gonna i: ', newTrackData);
+    // console.log('gonna i: ', newTrackData);
     if (!newTrackData.name || !newTrackData.latitude || !newTrackData.longitude || !newTrackData.zoom) {
       alert('Please fill out all fields.');
       return;
@@ -229,13 +230,13 @@ function DashBoard() {
     if (event.target.value === "d") return;
     if (event.target.value === "addTrack") {
       setShowDialog(true);
-      console.log('t');
+      // console.log('t');
       return;
     }
 
     const selectedTrackId = event.target.value;
     const selectedTrack = trackData.find(track => track.id === parseInt(selectedTrackId));
-    console.log(selectedTrack);
+    // console.log(selectedTrack);
     if (selectedTrack) {
       setMapCenter([selectedTrack.latitude, selectedTrack.longitude]);
     } else {
@@ -373,8 +374,8 @@ function DashBoard() {
 
 const CarInfo = ({ car, sosMessages, onClick }) => {
   const hasSos = sosMessages.has(parseInt(car.carId));
-  console.log('--',sosMessages);
-  console.log('R/G', hasSos, car.carId);
+  // console.log('--',sosMessages);
+  // console.log('R/G', hasSos, car.carId);
   return (
     <div
       className={`relative flex flex-col mt-2 p-2 rounded-lg cursor-pointer ${hasSos ? 'border-4 border-red-600 animate-blinking' : 'border border-green-300 bg-green-500'}`}
