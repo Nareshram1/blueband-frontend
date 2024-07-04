@@ -128,9 +128,7 @@ function DashBoard() {
     };
     getTrackData();
 
-    const socket = io('https://blueband-backend.vercel.app', {
-      withCredentials: false,
-    });
+    const socket = io('https://blueband-backend.onrender.com');
 
     socket.on('locationUpdate', updateCarData);
     socket.on('ok', updateCarStatus);
