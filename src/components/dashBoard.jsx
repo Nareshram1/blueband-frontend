@@ -109,9 +109,8 @@ function DashBoard() {
 
     }
     getTrackData();
-    const socket = io('https://blueband-backend.onrender.com', {
-      withCredentials: true,
-    });
+    const socket = io('https://blueband-server-zr7gm6w4cq-el.a.run.app/'
+    );
 
 
     socket.on('locationUpdate', updateCarData);
