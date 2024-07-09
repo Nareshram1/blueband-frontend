@@ -76,7 +76,7 @@ function DashBoard() {
   const updateCarStatus = useCallback((dataArray) => {
     // Assuming dataArray is an array with a single object as described
     const data = dataArray[0];
-  
+    console.log('ok is hitted')
     setSosMessages((prevMessages) => {
       // Convert the Map to an array of entries
       const entriesArray = Array.from(prevMessages.entries());
@@ -127,7 +127,9 @@ function DashBoard() {
       }
     };
     getTrackData();
-    const socket = io('https://blueband-server-zr7gm6w4cq-el.a.run.app/'
+    //https://blueband-bc-zr7gm6w4cq-el.a.run.app
+    // https://blueband-bc-zr7gm6w4cq-el.a.run.app
+    const socket = io('https://blueband-bc-zr7gm6w4cq-el.a.run.app'
     );
 
  
@@ -137,6 +139,7 @@ function DashBoard() {
 
     socket.on('sos', (data) => {
       setSosMessages((prevMessages) => {
+        console.log('sos is hitted')
         const newMessages = new Map(prevMessages);
         newMessages.set(data.carId, data.message);
         audio.play();
@@ -254,121 +257,135 @@ function DashBoard() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Dialog>
-        <header className="p-0 text-white bg-slate-900">
-          <div className="flex flex-row items-center w-full p-4">
-            <Image
-              src="/blueband_logo.png"
-              width={50}
-              height={50}
-              alt="BlueBand Sports Logo"
-            />
-            <h1 className="ml-3 text-2xl font-bold">BlueBand Sports</h1>
-            {/* <div className='bg-red-500'> */}
+    <>
+<style jsx global>{`
+  /* Hide scrollbar for WebKit browsers */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 
-            <select className="w-auto h-10 p-2 ml-auto text-lg font-bold rounded-lg bg-slate-900 hover:cursor-pointer" onChange={handleRaceTrackChange}>
-              <option value="d" className='bg-slate-400'>Select a track</option>
-              {trackData.map((track) => (
-                <option key={track.id} value={track.id}>{track.name}</option>
-              ))}
-            </select>
-            <DialogTrigger asChild className='w-4 ml-8'>
-              <Button variant="outline" className='bg-slate-600'>+</Button>
-            </DialogTrigger>
-          </div>
-          {/* </div> */}
-        </header>
-        <div className='flex flex-col flex-grow h-max md:flex-row'>
-          <div className='flex md:w-[20%] w-[100%] bg-gray-900 shadow-md rounded-r-md'>
-            <div className='flex-row flex-grow hidden p-4 md:flex md:flex-col'>
-              <h1 className='text-xl font-bold text-white'>Cars</h1>
-              {sortedCars.map((car) => (
-                <CarInfo key={car.carId} car={car} sosMessages={sosMessages} onClick={handleCarInfoClick} />
-              ))}
-            </div>
-          </div>
-          <main className="flex flex-col flex-grow min-h-[100%]">
-            {sosMessages.size > 0 && (
-              <div onDoubleClick={handleSosAlertClick} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max " role="alert">
-                <strong className="font-bold">SOS Alerts:</strong>
-                <ul className="pl-5 mt-2 list-disc">
-                  {Array.from(sosMessages.entries()).map(([carId, message], index) => (
-                    <li key={index}>{carId}: {message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {cars.size > 0 ? (
-              <MapContainer className="z-10 flex flex-grow" center={mapCenter} zoom={18} style={{ width: "100%" }}>
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  maxZoom={23} // Increase the max zoom level
-                />
-                {sortedCars.map((car) => (
-                  <Marker
-                    key={car.carId}
-                    position={[car.latitude, car.longitude]}
-                    icon={sosMessages.has(parseInt(car.carId)) ? SosIcon : RaceCar}
-                    rotationOrigin="center"
-                  >
-                    <Popup>
-                      Car ID: {car.carId}<br />
-                      Latitude: {car.latitude}<br />
-                      Longitude: {car.longitude}
-                    </Popup>
-                  </Marker>
-                ))}
-                <RecenterMap center={mapCenter} />
-              </MapContainer>
-            ) : (
-              <div className='flex items-center justify-center flex-grow'>
-                <h1>Tracking Not Enabled</h1>
-              </div>
-            )}
-          </main>
+  /* Hide scrollbar for IE, Edge */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none; /* Firefox */
+  }
+`}</style>
+
+<div className="flex flex-col min-h-screen">
+  <Dialog>
+    <header className="p-0 text-white bg-slate-900">
+      <div className="flex flex-row items-center w-full p-4">
+        <Image
+          src="/blueband_logo.png"
+          width={50}
+          height={50}
+          alt="BlueBand Sports Logo"
+        />
+        <h1 className="ml-3 text-2xl font-bold">BlueBand Sports</h1>
+        <select className="w-auto h-10 p-2 ml-auto text-lg font-bold rounded-lg bg-slate-900 hover:cursor-pointer" onChange={handleRaceTrackChange}>
+          <option value="d" className='bg-slate-400'>Select a track</option>
+          {trackData.map((track) => (
+            <option key={track.id} value={track.id}>{track.name}</option>
+          ))}
+        </select>
+        <DialogTrigger asChild className='w-4 ml-8'>
+          <Button variant="outline" className='bg-slate-600'>+</Button>
+        </DialogTrigger>
+      </div>
+    </header>
+    <div className='flex flex-col flex-grow md:flex-row'>
+      <div className='flex md:w-[20%] w-[100%] bg-gray-900 shadow-md rounded-r-md'>
+        <div className='flex-row flex-grow hidden p-4 md:flex md:flex-col hide-scrollbar overflow-y-auto' style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+          <h1 className='text-xl font-bold text-white'>Cars</h1>
+          {sortedCars.map((car) => (
+            <CarInfo key={car.carId} car={car} sosMessages={sosMessages} onClick={handleCarInfoClick} />
+          ))}
         </div>
-
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add New Track</DialogTitle>
-            <DialogDescription>
-              Enter all details of track.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid items-center grid-cols-4 gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input id="name" name="name" value={newTrackData.name} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
-            </div>
-            <div className="grid items-center grid-cols-4 gap-4">
-              <Label htmlFor="latitude" className="text-right">
-                Latitude
-              </Label>
-              <Input id="latitude" name="latitude" value={newTrackData.latitude} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
-            </div>
-            <div className="grid items-center grid-cols-4 gap-4">
-              <Label htmlFor="longitude" className="text-right">
-                Longitude
-              </Label>
-              <Input id="longitude" name="longitude" value={newTrackData.longitude} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
-            </div>
-            <div className="grid items-center grid-cols-4 gap-4">
-              <Label htmlFor="zoom" className="text-right">
-                Zoom
-              </Label>
-              <Input id="zoom" name="zoom" value={newTrackData.zoom} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
-            </div>
+      </div>
+      <main className="flex flex-col flex-grow min-h-[100%]">
+        {sosMessages.size > 0 && (
+          <div onDoubleClick={handleSosAlertClick} className="relative px-4 py-3 text-red-700 bg-red-100 border border-red-400 rounded h-max" role="alert">
+            <strong className="font-bold">SOS Alerts:</strong>
+            <ul className="pl-5 mt-2 list-disc">
+              {Array.from(sosMessages.entries()).map(([carId, message], index) => (
+                <li key={index}>{carId}: {message}</li>
+              ))}
+            </ul>
           </div>
-          <DialogFooter>
-            <Button type="submit" onClick={handleAddNewTrack}>Save changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+        {cars.size > 0 ? (
+          <MapContainer className="z-10 flex flex-grow" center={mapCenter} zoom={18} style={{ width: "100%" }}>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              maxZoom={23} // Increase the max zoom level
+            />
+            {sortedCars.map((car) => (
+              <Marker
+                key={car.carId}
+                position={[car.latitude, car.longitude]}
+                icon={sosMessages.has(parseInt(car.carId)) ? SosIcon : RaceCar}
+                rotationOrigin="center"
+              >
+                <Popup>
+                  Car ID: {car.carId}<br />
+                  Latitude: {parseFloat(car.latitude).toFixed(4)}<br />
+                  Longitude: {parseFloat(car.longitude).toFixed(4)} <br />
+                  Speed: {parseFloat(car.speed).toFixed(1)}
+                </Popup>
+              </Marker>
+            ))}
+            <RecenterMap center={mapCenter} />
+          </MapContainer>
+        ) : (
+          <div className='flex items-center justify-center flex-grow'>
+            <h1>Tracking Not Enabled</h1>
+          </div>
+        )}
+      </main>
     </div>
+
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Add New Track</DialogTitle>
+        <DialogDescription>
+          Enter all details of track.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="grid items-center grid-cols-4 gap-4">
+          <Label htmlFor="name" className="text-right">
+            Name
+          </Label>
+          <Input id="name" name="name" value={newTrackData.name} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
+        </div>
+        <div className="grid items-center grid-cols-4 gap-4">
+          <Label htmlFor="latitude" className="text-right">
+            Latitude
+          </Label>
+          <Input id="latitude" name="latitude" value={newTrackData.latitude} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
+        </div>
+        <div className="grid items-center grid-cols-4 gap-4">
+          <Label htmlFor="longitude" className="text-right">
+            Longitude
+          </Label>
+          <Input id="longitude" name="longitude" value={newTrackData.longitude} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
+        </div>
+        <div className="grid items-center grid-cols-4 gap-4">
+          <Label htmlFor="zoom" className="text-right">
+            Zoom
+          </Label>
+          <Input id="zoom" name="zoom" value={newTrackData.zoom} onChange={handleInputChange} className="col-span-3 font-bold text-slate-500" />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button type="submit" onClick={handleAddNewTrack}>Add track</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</div>
+
+</>
   );
 }
 
@@ -382,8 +399,9 @@ const CarInfo = ({ car, sosMessages, onClick }) => {
       onClick={() => onClick(car.latitude, car.longitude)}
     >
       <span className='font-bold text-white'>Car: {car.carId}</span>
-      <span className='text-white'>Latitude: {car.latitude}</span>
-      <span className='text-white'>Longitude: {car.longitude}</span>
+      <span className='text-white'>Latitude: { (parseFloat(car.latitude).toFixed(4)) }</span>
+      <span className='text-white'>Longitude: {(parseFloat(car.longitude).toFixed(4))}</span>
+      <span className='text-white'>Speed: {parseFloat(car.speed).toFixed(1)} kmph</span>
     </div>
   );
 };
