@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import { CSSTransition, TransitionGroup } from 'react-transition-group';
 const RaceCar = L.icon({
   iconUrl: '/racingcar.png',
   iconSize: [38, 38],
@@ -61,9 +61,26 @@ function DashBoard() {
     longitude: "",
     zoom: ""
   });
+  function getTimestamp() {
+    const date = new Date();
+    
+    // Extract hours, minutes, and seconds
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    let seconds = date.getSeconds();
 
+    // Ensure two digits for hours, minutes, and seconds
+    hours = (hours < 10) ? `0${hours}` : hours;
+    minutes = (minutes < 10) ? `0${minutes}` : minutes;
+    seconds = (seconds < 10) ? `0${seconds}` : seconds;
+
+    // Create timestamp string in hh:mm:ss format
+    const timestamp = `${hours}:${minutes}:${seconds}`;
+
+    return timestamp;
+}
   const updateCarData = useCallback((data) => {
-    console.log('hit ',data);
+    console.log('hit ',data,getTimestamp());
     setCars((prevCars) => {
       const newCars = new Map(prevCars);
       data.forEach(car => {
@@ -129,7 +146,7 @@ function DashBoard() {
     getTrackData();
     //https://blueband-bc-zr7gm6w4cq-el.a.run.app
     // https://blueband-bc-zr7gm6w4cq-el.a.run.app
-    const socket = io('https://blueband-bc-zr7gm6w4cq-el.a.run.app'
+    const socket = io('https://blueband-speed-zr7gm6w4cq-el.a.run.app'
     );
 
  
@@ -314,27 +331,35 @@ function DashBoard() {
           </div>
         )}
         {cars.size > 0 ? (
-          <MapContainer className="z-10 flex flex-grow" center={mapCenter} zoom={18} style={{ width: "100%" }}>
+          <MapContainer className="z-10 flex flex-grow" center={mapCenter} zoom={18} style={{ width: "100%" }} an>
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               maxZoom={23} // Increase the max zoom level
             />
-            {sortedCars.map((car) => (
-              <Marker
-                key={car.carId}
-                position={[car.latitude, car.longitude]}
-                icon={sosMessages.has(parseInt(car.carId)) ? SosIcon : RaceCar}
-                rotationOrigin="center"
-              >
-                <Popup>
-                  Car ID: {car.carId}<br />
-                  Latitude: {parseFloat(car.latitude).toFixed(4)}<br />
-                  Longitude: {parseFloat(car.longitude).toFixed(4)} <br />
-                  Speed: {parseFloat(car.speed).toFixed(1)}
-                </Popup>
-              </Marker>
-            ))}
+            <TransitionGroup>
+              {sortedCars.map((car) => (
+                <CSSTransition
+                  key={car.carId}
+                  timeout={2000}
+                  classNames="marker"
+                >
+                  <Marker
+                    position={[car.latitude, car.longitude]}
+                    icon={sosMessages.has(car.carId) ? SosIcon : RaceCar}
+                    rotationAngle={car.direction}
+                    rotationOrigin="center"
+                  >
+                    <Popup>
+                      <p>Car ID: {car.carId}</p>
+                      <p>Latitude: {car.latitude}</p>
+                      <p>Longitude: {car.longitude}</p>
+                      <p>Speed: {car.speed}</p>
+                    </Popup>
+                  </Marker>
+                </CSSTransition>
+              ))}
+            </TransitionGroup>
             <RecenterMap center={mapCenter} />
           </MapContainer>
         ) : (
