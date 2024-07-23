@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+
+# Rally Car Real-Time Tracking System
+
+This project is a real-time tracking system for rally cars, built using Next.js for the frontend. The system displays the live location of rally cars on an interactive map, provides real-time updates via socket connections, and includes SOS and OK messaging functionality.
+
+## Demo Video
+
+[Watch the demo video](./demo/demo.mp4) (Replace with actual link)
+
+## Features
+
+- **Real-Time Tracking**: Displays the live location of rally cars on a map.
+- **Socket Integration**: Utilizes sockets for real-time updates.
+- **SOS and OK Messaging**: Allows drivers to send SOS and OK messages quickly.
+- **Responsive UI**: Built with modern web technologies for an intuitive and responsive user experience.
+
+## Technologies Used
+
+- **Frontend**: Next.js, React.js
+- **Real-Time Communication**: Socket.IO
+- **Map Integration**: OpenStreetMap (or other map services)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js
+- npm or yarn
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Clone the repository:
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+    ```sh
+    git clone https://github.com/Nareshram1/blueband-frontend.git
+    cd blueband-frontend
+    ```
 
-## Learn More
+2. Install dependencies:
 
-To learn more about Next.js, take a look at the following resources:
+    ```sh
+    npm install
+    # or
+    yarn install
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Running the Application
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+1. Start the development server:
 
-## Deploy on Vercel
+    ```sh
+    npm run dev
+    # or
+    yarn dev
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. Open your browser and navigate to `http://localhost:3000`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Usage
+
+1. **Tracking Cars**: View the live locations of rally cars on the map.
+2. **Sending Messages**: Use the interface to send SOS or OK messages.
+
+## Acknowledgments
+
+- Inspired by the need for efficient real-time rally car tracking.
+- Thanks to all my team and staff.
