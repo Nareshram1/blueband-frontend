@@ -5,10 +5,7 @@ This project is a real-time tracking system for rally cars, built using Next.js 
 
 ## Demo Video
 
-<video width="600" controls>
-  <source src="./demo/demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+[![Watch the demo video](./demo/image.png)](./demo/demo.mp4)
 
 ## Features
 
